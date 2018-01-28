@@ -114,10 +114,7 @@ int calcSign(unsigned int hex, int exp, int frac) {
  *            portion of the hex value
 */
 int calcExp(unsigned int hex, int exp, int frac) {
-    unsigned int expBitMask = 0;
-    for (int i = 0; i < exp; i++) {
-        expBitMask += pow(2,i); // mask to isolate exponential portion
-    }
+    unsigned int expBitMask = (1 << exp) - 1; // create mask
     hex = hex >> frac;
     return (hex & expBitMask);
 }
