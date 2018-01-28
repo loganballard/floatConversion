@@ -71,13 +71,13 @@ int processInput(int argCount, char *argValues[],
  *  Programmatically calculates the bias 
  *
  *  Params:
- *      int exp - the amount of exp digits
+ *      int expTol - the amount of exp digits
  *
  *  Returns:
  *      int - the bias that we will use in calculations
 */
-int calcBias(int exp) {
-    return (pow(2,exp - 1) - 1);
+int calcBias(int expTol) {
+    return (pow(2,expTol - 1) - 1);
 }
 
 /*
@@ -91,8 +91,8 @@ int calcBias(int exp) {
  *      int frac         - the fractional tolerance
  *
  *  Returns:
- *      1 - the parsed float will be positive
- *      0 - the parsed float will be negative
+ *      1 - the parsed float will be negative
+ *      0 - the parsed float will be positive
 */
 int calcSign(unsigned int hex, int exp, int frac) {
     hex = hex >> (exp + frac);
@@ -108,15 +108,86 @@ int calcSign(unsigned int hex, int exp, int frac) {
  *      unsigned int hex - the hex value to get the exp from
  *      int exp          - the exponent tolerance
  *      int frac         - the fractional tolerance
- *
+ *      int *denorm      - whether to use the normal or denorm
+ *                         range in calculation. Passed by ref
+ *                         from caller and set here in calcExp
  *  Returns:
  *      int - the value that was calculated for the exponent
  *            portion of the hex value
 */
-int calcExp(unsigned int hex, int exp, int frac) {
+int calcExp(unsigned int hex, int exp, int frac, int *denorm) {
     unsigned int expBitMask = (1 << exp) - 1; // create mask
+    int retExp;
     hex = hex >> frac;
-    return (hex & expBitMask);
+    retExp = hex & expBitMask;
+    if (retExp == 0 || retExp == expBitMask) {
+        *denorm = 1;
+    } else {
+        *denorm = 0;
+    }
+    return retExp;
+}
+
+/*
+ * calcFrac
+ *  Calculates the fractional portion of the float representation.
+ *  Is dependent on normalized flag being set accurately by caller. 
+ *  As a consequence, must be called after calcExp.
+ *
+ *  Params:
+ *      unsigned int hex - the hex value to convert
+ *      int fracTol      - fractional tolerance
+ *      int denorm       - 1 to use denorm range, 0 for normal range
+ *
+ *  Returns:
+ *      float - fractional portion of float representation of hex
+*/
+float calcFrac(unsigned int hex, int frac, int denorm) {
+    int fracBitMask = (1 << frac) - 1;
+    int fracVal = hex & fracBitMask;
+    float fracRet = 0;
+    for (int i = 0; i < frac; i++) {
+        if (fracVal & (1 << i)) {
+            fracRet += pow(2,-(frac-i));
+        }
+    }
+    if (!denorm) {
+        return 1 + fracRet;
+    } else {
+        return fracRet;
+    }
+}
+
+/*
+ * isSpecialVal
+ *  Handing the situation in the denormalized range where
+ *  the exponent's bits are all 1
+ *
+ *  Params:
+ *      int exp    - the exponent value to check if all bits are 1
+ *      int expTol - # of bits in the exponent
+ *      float frac - the fractional value
+ *      int isNeg  - negative or positive (1 = negative)
+ *
+ *  Returns:
+ *      1 - special value was handled, caller should stop calculations
+ *      0 - no special value found, caller should continue
+*/
+int isSpecialVal(int exp, int expTol, float frac, int isNeg) {
+    // check for exponents bits all = 1
+    if ( !( exp == (exp & ((1 << expTol) - 1)) )) {
+        return 0; // not a special value, return
+    }
+    if (frac == 0) {
+        if (isNeg) {
+            printf("-inf\n");
+        } else {
+            printf("inf\n");
+        }
+    } else {
+        printf("NaN\n");
+    }
+    return 1;
 }
 
 /*
@@ -136,17 +207,19 @@ int calcExp(unsigned int hex, int exp, int frac) {
  *      Nothing
 */      
 void calcFloat(int fracTol, int expTol, unsigned int hex) {
-    int sign, exponent; // the sign (neg/pos) and exponent val from hex
+    int isNeg, exponent; // the sign (neg/pos), exponent val from hex
+    int denorm; // flag to use the normalized/denormalized range 
     float fraction, result; // the frac based on the hex, and the result
-    sign = calcSign(hex, expTol, fracTol);
-    exponent = calcExp(hex, expTol, fracTol);
-    /* fraction = calcExp(hex, fracTol);
-     * exponent = calcExp(hex, fracTol, expTol);
-     *
-     * result = pow((1 + frac),2^(exponent - calcBias(expTol)));
-     * printf("%f\n, result);
-    */
-     // TODO - implement the top part here 
+    isNeg = calcSign(hex, expTol, fracTol);
+    exponent = calcExp(hex, expTol, fracTol, &denorm);
+    fraction = calcFrac(hex, fracTol, denorm);
+    if (denorm) {
+        if (isSpecialVal(exponent, expTol, fraction, isNeg)){
+            return;
+        }
+    }
+    //result = pow((1 + frac),2^(exponent - calcBias(expTol)));
+    //printf("%f\n", result);
     return;
 }
 
