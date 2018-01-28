@@ -23,9 +23,6 @@
 #include <stdio.h>
 #include <math.h>
 
-// definitions
-#define DEBUG 1
-
 /*
  * processInput
  *  This function will take the input from the command line
@@ -58,7 +55,7 @@ int processInput(int argCount, char *argValues[],
         printf("should be between 2 and 10.\n");
         return 1;
     } else if (*exp < 3 || *exp > 5) {
-        printf("Illegal number of exp bits (%d), ",*exp);
+        printf("Illegal number of exponent bits (%d), ",*exp);
         printf("should be between 3 and 5.\n");
         return 1;
     } else {
@@ -182,12 +179,42 @@ int isSpecialVal(int exp, int expTol, float frac, int isNeg) {
         if (isNeg) {
             printf("-inf\n");
         } else {
-            printf("inf\n");
+            printf("+inf\n");
         }
     } else {
         printf("NaN\n");
     }
     return 1;
+}
+
+/*
+ * finalFloatCalc
+ *  The function that, after we've eliminated all the special
+ *  cases and potential problems, after we have the mantissa, 
+ *  exponent, and knowledge of whether we're in normalized or
+ *  denormalized space, actually will calculate the final,
+ *  floating-point value of the hex value passed in.
+ *
+ *  Params:
+ *      int exponent   - the exponent for calculation
+ *      int expTol     - exponential tolerance
+ *      float mantissa - the mantissa for calculation
+ *      int denorm     - 1 for denormalized values, 0 for normalized
+ *      int isNeg      - 1 for negative result, 0 for positive
+ *
+ *  Returns:
+ *      float - the final floating point representation that
+ *              we've worked oh so hard for
+*/
+
+float finalFloatCalc(int exp, int expTol, float mantissa, int denorm, int isNeg) {
+    int bigE; // what to raise 2 to the power of
+    if (denorm) {
+        bigE = 1 - calcBias(expTol);
+    } else {
+        bigE = exp - calcBias(expTol);
+    }
+    return ( pow(-1,isNeg) * ( mantissa * pow(2,bigE)));
 }
 
 /*
@@ -209,17 +236,17 @@ int isSpecialVal(int exp, int expTol, float frac, int isNeg) {
 void calcFloat(int fracTol, int expTol, unsigned int hex) {
     int isNeg, exponent; // the sign (neg/pos), exponent val from hex
     int denorm; // flag to use the normalized/denormalized range 
-    float fraction, result; // the frac based on the hex, and the result
+    float mantissa, result; // the mantissa based on the hex, and the result
     isNeg = calcSign(hex, expTol, fracTol);
     exponent = calcExp(hex, expTol, fracTol, &denorm);
-    fraction = calcFrac(hex, fracTol, denorm);
+    mantissa = calcFrac(hex, fracTol, denorm);
     if (denorm) {
-        if (isSpecialVal(exponent, expTol, fraction, isNeg)){
+        if (isSpecialVal(exponent, expTol, mantissa, isNeg)){
             return;
         }
     }
-    //result = pow((1 + frac),2^(exponent - calcBias(expTol)));
-    //printf("%f\n", result);
+    result = finalFloatCalc(exponent, expTol, mantissa, denorm, isNeg);
+    printf("%f\n", result);
     return;
 }
 
