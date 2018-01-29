@@ -47,9 +47,9 @@ int processInput(int argCount, char *argValues[],
          printf("received (%d).\n",(argCount-1));
          return 1;
     }
-    sscanf(argValues[1],"%d",frac); // fraction allowed range
-    sscanf(argValues[2],"%d",exp); // exp allowed range
-    sscanf(argValues[3],"%x",hex); // hex number to encode to float
+    sscanf(argValues[1],"%3d",frac); // fraction allowed range
+    sscanf(argValues[2],"%2d",exp); // exp allowed range
+    sscanf(argValues[3],"%9x",hex); // hex number to encode to float
     if (*frac < 2 || *frac > 10 ) {
         printf("Illegal number of fraction bits (%d), ",*frac);
         printf("should be between 2 and 10.\n");
@@ -139,13 +139,13 @@ int calcExp(unsigned int hex, int exp, int frac, int *denorm) {
  *  Returns:
  *      float - fractional portion of float representation of hex
 */
-float calcFrac(unsigned int hex, int frac, int denorm) {
-    int fracBitMask = (1 << frac) - 1;
+float calcFrac(unsigned int hex, int fracTol, int denorm) {
+    int fracBitMask = (1 << fracTol) - 1;
     int fracVal = hex & fracBitMask;
     float fracRet = 0;
-    for (int i = 0; i < frac; i++) {
+    for (int i = 0; i < fracTol; i++) {
         if (fracVal & (1 << i)) {
-            fracRet += pow(2,-(frac-i));
+            fracRet += pow(2,-(fracTol-i));
         }
     }
     if (!denorm) {
@@ -172,7 +172,7 @@ float calcFrac(unsigned int hex, int frac, int denorm) {
 */
 int isSpecialVal(int exp, int expTol, float frac, int isNeg) {
     // check for exponents bits all = 1
-    if ( !( exp == (exp & ((1 << expTol) - 1)) )) {
+    if (!( exp == (exp & ((1 << expTol) - 1)))) {
         return 0; // not a special value, return
     }
     if (frac == 0) {
@@ -214,7 +214,7 @@ float finalFloatCalc(int exp, int expTol, float mantissa, int denorm, int isNeg)
     } else {
         bigE = exp - calcBias(expTol);
     }
-    return ( pow(-1,isNeg) * ( mantissa * pow(2,bigE)));
+    return (pow(-1,isNeg) * (mantissa * pow(2,bigE)));
 }
 
 /*
