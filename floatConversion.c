@@ -84,15 +84,15 @@ int calcBias(int expTol) {
  *
  *  Params:
  *      unsigned int hex - the user inputted hex value
- *      int exp          - the exponential tolerance
- *      int frac         - the fractional tolerance
+ *      int expTol       - the exponential tolerance
+ *      int fracTol      - the fractional tolerance
  *
  *  Returns:
  *      1 - the parsed float will be negative
  *      0 - the parsed float will be positive
 */
-int calcSign(unsigned int hex, int exp, int frac) {
-    hex = hex >> (exp + frac);
+int calcSign(unsigned int hex, int expTol, int fracTol) {
+    hex = hex >> (expTol + fracTol);
     return (hex & 1);
 }
 
@@ -103,8 +103,8 @@ int calcSign(unsigned int hex, int exp, int frac) {
  *
  *  Params:
  *      unsigned int hex - the hex value to get the exp from
- *      int exp          - the exponent tolerance
- *      int frac         - the fractional tolerance
+ *      int expTol       - the exponent tolerance
+ *      int fracTol      - the fractional tolerance
  *      int *denorm      - whether to use the normal or denorm
  *                         range in calculation. Passed by ref
  *                         from caller and set here in calcExp
@@ -112,10 +112,10 @@ int calcSign(unsigned int hex, int exp, int frac) {
  *      int - the value that was calculated for the exponent
  *            portion of the hex value
 */
-int calcExp(unsigned int hex, int exp, int frac, int *denorm) {
-    unsigned int expBitMask = (1 << exp) - 1; // create mask
+int calcExp(unsigned int hex, int expTol, int fracTol, int *denorm) {
+    unsigned int expBitMask = (1 << expTol) - 1; // create mask
     int retExp;
-    hex = hex >> frac;
+    hex = hex >> fracTol;
     retExp = hex & expBitMask;
     if (retExp == 0 || retExp == expBitMask) {
         *denorm = 1;
